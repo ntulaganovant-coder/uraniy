@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uraniumiy — Search Encyclopedia</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --surface2: #1f1f1f;
+    --border: #2a2a2a;
+    --accent: #00ff88;
+    --accent2: #00ccff;
+    --text: #e8e8e8;
+    --muted: #555;
+    --highlight: #ffcc00;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(0,255,136,0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(0,204,255,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 700px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 36px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: contain;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px;
+  }
+
+  .logo-fallback {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #00ff88, #00ccff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 16px;
+    animation: fadeDown 0.6s 0.1s ease both;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  #searchInput {
+    width: 100%;
+    padding: 14px 16px 14px 44px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  #searchInput:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,255,136,0.08);
+  }
+
+  #searchInput::placeholder { color: var(--muted); }
+
+  /* Stats bar */
+  .stats {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding-left: 4px;
+    min-height: 18px;
+    animation: fadeDown 0.6s 0.15s ease both;
+  }
+
+  /* Layout */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    animation: fadeDown 0.6s 0.2s ease both;
+  }
+
+  /* Results list */
+  .results-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #resultsList {
+    list-style: none;
+    overflow-y: auto;
+    height: 340px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  #resultsList::-webkit-scrollbar { width: 4px; }
+  #resultsList::-webkit-scrollbar-track { background: transparent; }
+  #resultsList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  #resultsList li {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #resultsList li:hover { background: var(--surface2); }
+
+  #resultsList li.active {
+    background: rgba(0,255,136,0.08);
+    color: var(--accent);
+    border-left: 2px solid var(--accent);
+  }
+
+  .item-icon { font-size: 0.8rem; opacity: 0.7; flex-shrink: 0; }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .empty-state .big { font-size: 2rem; }
+
+  /* Info panel */
+  .info-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info-header {
+    padding: 10px 14px 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .info-icon { font-size: 1.1rem; }
+
+  .info-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--highlight);
+  }
+
+  .info-body {
+    padding: 14px;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: #ccc;
+    font-family: 'Space Mono', monospace;
+    overflow-y: auto;
+    flex: 1;
+    height: 340px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .info-body::-webkit-scrollbar { width: 4px; }
+  .info-body::-webkit-scrollbar-track { background: transparent; }
+  .info-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .info-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .info-placeholder .big { font-size: 2rem; }
+
+  /* Number info */
+  .num-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .num-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .num-card .label {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .num-card .value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--accent);
+    word-break: break-all;
+  }
+
+  /* Category tags */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+  }
+  .tag-fruit { background: rgba(255,100,100,0.15); color: #ff8888; border: 1px solid rgba(255,100,100,0.3); }
+  .tag-veg { background: rgba(100,220,100,0.15); color: #88dd88; border: 1px solid rgba(100,220,100,0.3); }
+  .tag-lang { background: rgba(0,200,255,0.15); color: #66ddff; border: 1px solid rgba(0,200,255,0.3); }
+  .tag-element { background: rgba(255,200,0,0.15); color: #ffcc44; border: 1px solid rgba(255,200,0,0.3); }
+  .tag-bio { background: rgba(180,100,255,0.15); color: #cc88ff; border: 1px solid rgba(180,100,255,0.3); }
+  .tag-number { background: rgba(0,255,136,0.15); color: #00ff88; border: 1px solid rgba(0,255,136,0.3); }
+
+  /* Footer */
+  .footer {
+    margin-top: 24px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-align: center;
+    animation: fadeDown 0.6s 0.3s ease both;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 560px) {
+    .main { grid-template-columns: 1fr; }
+    #resultsList, .info-body { height: 220px; }
+    h1 { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="title-row">
+      <div class="logo-fallback">⚛️</div>
+      <h1>Uraniumiy</h1>
+    </div>
+    <div class="subtitle">Education has no limit</div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search fruits, vegetables, elements, languages, numbers..." autocomplete="off" />
+  </div>
+
+  <div class="stats" id="stats">Type to search across all categories</div>
+
+  <!-- Main panels -->
+  <div class="main">
+    <div class="results-panel">
+      <div class="panel-label">Results</div>
+      <ul id="resultsList">
+        <li style="padding:0; border:0;">
+          <div class="empty-state">
+            <div class="big">🔎</div>
+            <div>Start typing to search</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <div class="info-panel">
+      <div class="info-header" id="infoHeader" style="display:none">
+        <span class="info-icon" id="infoIcon"></span>
+        <span class="info-title" id="infoTitle"></span>
+      </div>
+      <div class="info-body" id="infoBody">
+        <div class="info-placeholder">
+          <div class="big">📖</div>
+          <div>Select an item to see information</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Uraniumiy Encyclopedia &nbsp;·&nbsp; Fruits · Vegetables · Elements · Languages · Biology · Numbers</div>
+</div>
+
+<script>
+const LANG_KEYS = new Set(["Python","HTML","CSS","JS","JavaScript","TS","TypeScript","Java","C","C+","C++","C#","Go","Golang","IronPython","PyPy","PHP","Ruby","Bash","Shell","Perl","Rust","Zig","Carbon","Whenever","Chef","Piet","Brainfrick","Befunge","Deadfish","R","C Plus","C Plus Plus","C Sharp"]);
+
+const FRUITS = new Set(["Apple","Banana","Cherry","Mango","Grape","Watermelon","Strawberry","Orange","Pineapple","Lemon","Lime","Peach","Pear","Plum","Blueberry","Raspberry","Blackberry","Coconut","Avocado","Pomegranate","Kiwi","Papaya","Guava","Lychee","Fig","Date","Apricot","Cantaloupe","Honeydew","Durian","Jackfruit","Passion Fruit","Starfruit","Persimmon","Quince","Mulberry","Gooseberry","Cranberry","Elderberry","Tamarind","Kumquat","Mandarin","Tangerine","Plantain","Yuzu","Nectarine","Ugli Fruit","Olive","Currant"]);
+
+const ELEMENTS = new Set(["Hydrogen","Helium","Lithium","Beryllium","Boron","Nitrogen","Oxygen","Fluorine","Neon","Sodium","Magnesium","Aluminum","Silicon","Phosphorus","Sulfur","Chlorine","Argon","Potassium","Calcium","Scandium","Titanium","Vanadium","Chromium","Manganese","Iron","Cobalt","Nickel","Copper","Zinc","Gallium","Germanium","Arsenic","Selenium","Bromine","Krypton","Rubidium","Strontium","Yttrium","Zirconium","Niobium","Molybdenum","Technetium","Ruthenium","Rhodium","Palladium","Silver","Cadmium","Indium","Tin","Antimony","Tellurium","Iodine","Xenon","Cesium","Barium","Lanthanum","Cerium","Praseodymium","Neodymium","Promethium","Samarium","Europium","Gadolinium","Terbium","Dysprosium","Holmium","Erbium","Thulium","Ytterbium","Lutetium","Hafnium","Tantalum","Tungsten","Rhenium","Osmium","Iridium","Platinum","Gold","Mercury","Thallium","Lead","Bismuth","Polonium","Astatine","Radon","Francium","Radium","Actinium","Thorium","Protactinium","Uranium","Neptunium","Plutonium","Americium","Curium","Berkelium","Californium","Einsteinium","Fermium","Mendelevium","Nobelium","Lawrencium","Rutherfordium","Dubnium","Seaborgium","Bohrium","Hassium","Meitnerium","Darmstadtium","Roentgenium","Copernicium","Nihonium","Flerovium","Moscovium","Livermorium","Tennessine","Oganesson"]);
+
+const BIO_KEYS = new Set(["Cell","DNA","brain","Skeleton","heart","stomach","lung","Eye","arm","leg","teeth","pancreas","Liver","kidney","bladder","mucle","skin","animal","human","plant"]);
+
+const data = {
+  "Apple": "A sweet red or green fruit rich in fiber and vitamin C. Great for digestion.",
+  "Banana": "A yellow tropical fruit high in potassium. Good for energy and heart health.",
+  "Cherry": "A small red fruit rich in antioxidants. Helps reduce inflammation.",
+  "Mango": "A tropical fruit rich in vitamins A and C. Known as the king of fruits.",
+  "Grape": "Small juicy fruit rich in antioxidants. Good for heart health.",
+  "Watermelon": "A large fruit with high water content. Great for hydration.",
+  "Strawberry": "A red berry rich in vitamin C and antioxidants.",
+  "Orange": "A citrus fruit high in vitamin C. Boosts immune system.",
+  "Pineapple": "A tropical fruit containing bromelain enzyme. Aids digestion.",
+  "Lemon": "A sour citrus fruit rich in vitamin C. Great for detox drinks.",
+  "Lime": "A small green citrus fruit. Used in cooking and drinks.",
+  "Peach": "A soft sweet fruit rich in vitamins A and C.",
+  "Pear": "A sweet fruit high in fiber and vitamin C.",
+  "Plum": "A small purple fruit rich in antioxidants and vitamin C.",
+  "Blueberry": "A small blue berry packed with antioxidants. Great for brain health.",
+  "Raspberry": "A red berry rich in fiber and vitamin C.",
+  "Blackberry": "A dark berry high in antioxidants and vitamins.",
+  "Coconut": "A tropical fruit rich in healthy fats and electrolytes.",
+  "Avocado": "A creamy fruit rich in healthy fats and potassium.",
+  "Pomegranate": "A red fruit full of antioxidants. Good for heart health.",
+  "Kiwi": "A small green fruit rich in vitamin C and K.",
+  "Papaya": "A tropical fruit rich in vitamin C and digestive enzymes.",
+  "Guava": "A tropical fruit high in vitamin C and fiber.",
+  "Lychee": "A sweet tropical fruit rich in vitamin C.",
+  "Fig": "A sweet fruit rich in fiber and minerals.",
+  "Date": "A sweet dried fruit high in energy and minerals.",
+  "Apricot": "A small orange fruit rich in vitamins A and C.",
+  "Cantaloupe": "A melon rich in vitamins A and C.",
+  "Honeydew": "A sweet green melon high in water content.",
+  "Durian": "A tropical fruit known for its strong smell and creamy taste.",
+  "Jackfruit": "A large tropical fruit used as a meat substitute.",
+  "Passion Fruit": "A tropical fruit rich in antioxidants and fiber.",
+  "Starfruit": "A star-shaped fruit rich in vitamin C.",
+  "Persimmon": "A sweet orange fruit rich in vitamins A and C.",
+  "Quince": "A yellow fruit rich in fiber and antioxidants.",
+  "Mulberry": "A sweet berry rich in iron and vitamin C.",
+  "Gooseberry": "A small tart berry rich in vitamin C.",
+  "Cranberry": "A red berry known for urinary tract health benefits.",
+  "Elderberry": "A dark berry used for immune support.",
+  "Tamarind": "A sour tropical fruit used in cooking and sauces.",
+  "Kumquat": "A tiny citrus fruit eaten whole, skin and all.",
+  "Mandarin": "A small sweet citrus fruit easy to peel.",
+  "Tangerine": "A sweet citrus fruit similar to mandarin.",
+  "Plantain": "A starchy banana-like fruit used in cooking.",
+  "Yuzu": "A Japanese citrus fruit with a unique flavor.",
+  "Nectarine": "A smooth-skinned peach-like fruit rich in vitamins.",
+  "Ugli Fruit": "A Jamaican citrus fruit with a rough exterior.",
+  "Olive": "A small fruit rich in healthy fats. Used for oil.",
+  "Currant": "A small tart berry rich in vitamin C.",
+  "Carrot": "An orange vegetable rich in beta-carotene and vitamin A. Good for eyesight.",
+  "Broccoli": "A green vegetable rich in vitamin C and K. Great for immunity.",
+  "Spinach": "A leafy green vegetable rich in iron and vitamins.",
+  "Tomato": "A red vegetable rich in lycopene and vitamin C.",
+  "Potato": "A starchy vegetable rich in carbohydrates and potassium.",
+  "Onion": "A pungent vegetable rich in antioxidants and vitamin C.",
+  "Garlic": "A strong-flavored vegetable with antibacterial properties.",
+  "Cucumber": "A green vegetable high in water content. Good for hydration.",
+  "Cabbage": "A leafy vegetable rich in vitamin C and K.",
+  "Cauliflower": "A white vegetable rich in vitamins and fiber.",
+  "Bell Pepper": "A colorful vegetable rich in vitamin C and antioxidants.",
+  "Eggplant": "A purple vegetable rich in antioxidants and fiber.",
+  "Zucchini": "A green vegetable low in calories and rich in vitamins.",
+  "Pumpkin": "An orange vegetable rich in vitamin A and fiber.",
+  "Sweet Potato": "An orange root vegetable rich in vitamins A and C.",
+  "Corn": "A yellow vegetable rich in fiber and vitamins.",
+  "Pea": "A small green vegetable rich in protein and fiber.",
+  "Celery": "A crunchy vegetable low in calories and high in water.",
+  "Lettuce": "A leafy vegetable low in calories and high in water.",
+  "Kale": "A leafy green vegetable packed with vitamins K, A, and C.",
+  "Asparagus": "A green vegetable rich in folate and vitamins.",
+  "Beetroot": "A red vegetable rich in iron and antioxidants.",
+  "Mushroom": "A fungus rich in B vitamins and minerals.",
+  "Ginger": "A spicy root vegetable used for digestive health.",
+  "Artichoke": "A vegetable rich in fiber and antioxidants.",
+  "Leek": "A mild onion-flavored vegetable rich in vitamins.",
+  "Radish": "A crunchy root vegetable rich in vitamin C.",
+  "Turnip": "A root vegetable rich in vitamins C and K.",
+  "Parsnip": "A white root vegetable rich in fiber and vitamins.",
+  "Fennel": "An aromatic vegetable with a mild anise flavor.",
+  "Okra": "A green vegetable rich in fiber and vitamins.",
+  "Brussels Sprout": "A small cabbage-like vegetable rich in vitamins C and K.",
+  "Bok Choy": "A Chinese cabbage rich in vitamins A and C.",
+  "Arugula": "A peppery leafy green rich in vitamins.",
+  "Kohlrabi": "A bulb vegetable rich in vitamin C and fiber.",
+  "Butternut Squash": "A sweet orange squash rich in vitamins A and C.",
+  "Chili Pepper": "A spicy vegetable rich in capsaicin and vitamin C.",
+  "Green Bean": "A slender vegetable rich in vitamins C and K.",
+  "Shallot": "A mild onion-like vegetable rich in antioxidants.",
+  "Yam": "A starchy root vegetable rich in potassium and vitamins.",
+  "Watercress": "A peppery leafy green rich in vitamins K and C.",
+  "Endive": "A bitter leafy vegetable rich in vitamins.",
+  "Radicchio": "A red leafy vegetable rich in antioxidants.",
+  "Rutabaga": "A root vegetable rich in vitamins C and E.",
+  "Sorrel": "A sour leafy green rich in vitamins C and A.",
+  "Chard": "A leafy green vegetable rich in vitamins K and A.",
+  "Collard Greens": "A leafy green vegetable rich in vitamins K and C.",
+  "Rapini": "A bitter green vegetable rich in vitamins A and C.",
+  "White Radish": "A mild root vegetable rich in vitamin C.",
+  "Beet": "A root vegetable rich in iron and antioxidants.",
+  "Python": "A high-level, general-purpose language known for simplicity and readability. Widely used in AI, data science, and web development. Created by Guido van Rossum in 1991.",
+  "HTML": "HyperText Markup Language. The standard language for creating web pages. Not a programming language but a markup language.",
+  "CSS": "Cascading Style Sheets. A style sheet language used to describe the presentation of HTML documents. Controls layout, colors, and fonts.",
+  "JS": "Short for JavaScript. A lightweight interpreted language used for interactive web pages.",
+  "JavaScript": "A lightweight, interpreted programming language. The core language of the web alongside HTML and CSS. Used for interactive web pages and Node.js backend.",
+  "TS": "Short for TypeScript. A strongly typed superset of JavaScript.",
+  "TypeScript": "A strongly typed superset of JavaScript developed by Microsoft. Adds static typing to JavaScript. Compiles to plain JavaScript.",
+  "Java": "A class-based, object-oriented language designed to be platform-independent. Famous for 'Write Once, Run Anywhere'. Used in Android, enterprise, and backend development.",
+  "C": "A general-purpose, procedural language created in 1972. The foundation of modern programming. Used in operating systems and embedded systems.",
+  "C+": "Not a standard language. Informally refers to a step between C and C++.",
+  "C++": "An extension of C with object-oriented features. Used in game development, system software, and high-performance applications. Created by Bjarne Stroustrup.",
+  "C#": "A modern, object-oriented language developed by Microsoft. Used heavily in game development with Unity and enterprise applications on .NET.",
+  "C Plus": "Another way to refer to C+. See C+.",
+  "C Plus Plus": "Another way to refer to C++. See C++.",
+  "C Sharp": "Another way to refer to C#. See C#.",
+  "Go": "A statically typed, compiled language designed by Google. Known for simplicity, fast compilation, and strong concurrency support via goroutines.",
+  "Golang": "Another name for the Go programming language. Designed at Google for scalable server-side development.",
+  "IronPython": "An implementation of Python running on the .NET framework. Allows Python code to interoperate with .NET libraries.",
+  "PyPy": "A fast alternative implementation of Python using Just-In-Time (JIT) compilation. Often much faster than standard CPython.",
+  "PHP": "A server-side scripting language designed for web development. Powers over 75% of websites including WordPress.",
+  "Ruby": "A dynamic, object-oriented language known for elegant syntax. Famous for the Ruby on Rails web framework.",
+  "Bash": "A Unix shell and command language. Used for scripting and automating tasks in Linux/macOS environments. Stands for Bourne Again SHell.",
+  "Shell": "A general term for command-line interpreters like Bash, Zsh, or Fish. Used to interact with the operating system.",
+  "Perl": "A high-level, general-purpose language known for text processing. Once widely used for CGI scripts and system administration.",
+  "Rust": "A systems programming language focused on safety, speed, and concurrency. Prevents memory errors at compile time.",
+  "Zig": "A low-level systems language aimed at being a modern replacement for C. Focuses on simplicity and explicit memory management.",
+  "Carbon": "An experimental successor to C++ developed by Google. Designed for performance-critical code with modern language features.",
+  "Whenever": "An esoteric programming language where statements run in non-deterministic order. The interpreter decides when to execute each line.",
+  "Chef": "An esoteric language where programs look like cooking recipes. Variables are ingredients and operations are cooking steps.",
+  "Piet": "An esoteric language where programs are images made of colored pixels. Named after the artist Piet Mondrian.",
+  "Brainfrick": "A minimalist esoteric language with only 8 commands. Extremely hard to write but Turing complete.",
+  "Befunge": "An esoteric language where code runs in 2D space. The program counter can move up, down, left, or right through the code.",
+  "Deadfish": "An esoteric language with only 4 commands: increment, decrement, square, and output.",
+  "R": "A language and environment for statistical computing and graphics. Widely used by statisticians and data scientists.",
+  "Hydrogen": "Symbol: H | Atomic Number: 1 | A colorless, odorless gas. The lightest and most abundant element in the universe.",
+  "Helium": "Symbol: He | Atomic Number: 2 | A colorless noble gas. Used in balloons and cooling MRI machines.",
+  "Lithium": "Symbol: Li | Atomic Number: 3 | A soft, silvery metal. Used in batteries and psychiatric medication.",
+  "Beryllium": "Symbol: Be | Atomic Number: 4 | A hard, lightweight metal. Used in aerospace and X-ray equipment.",
+  "Boron": "Symbol: B | Atomic Number: 5 | A metalloid used in glass, ceramics, and nuclear reactors.",
+  "Nitrogen": "Symbol: N | Atomic Number: 7 | Makes up 78% of Earth's atmosphere. Used in fertilizers and refrigeration.",
+  "Oxygen": "Symbol: O | Atomic Number: 8 | Essential for breathing and combustion. Makes up 21% of Earth's atmosphere.",
+  "Fluorine": "Symbol: F | Atomic Number: 9 | The most reactive element. Used in toothpaste and Teflon coatings.",
+  "Neon": "Symbol: Ne | Atomic Number: 10 | A noble gas used in neon signs and lasers.",
+  "Sodium": "Symbol: Na | Atomic Number: 11 | A soft, reactive metal. Essential for human body. Found in table salt.",
+  "Magnesium": "Symbol: Mg | Atomic Number: 12 | A lightweight metal used in alloys, fireworks, and supplements.",
+  "Aluminum": "Symbol: Al | Atomic Number: 13 | A lightweight, corrosion-resistant metal. Used in packaging and transport.",
+  "Silicon": "Symbol: Si | Atomic Number: 14 | A metalloid used in computer chips, solar cells, and glass.",
+  "Phosphorus": "Symbol: P | Atomic Number: 15 | Essential for life, found in DNA and bones. Used in fertilizers.",
+  "Sulfur": "Symbol: S | Atomic Number: 16 | A yellow nonmetal used in gunpowder and sulfuric acid production.",
+  "Chlorine": "Symbol: Cl | Atomic Number: 17 | Used in water purification, bleach, and PVC plastic.",
+  "Argon": "Symbol: Ar | Atomic Number: 18 | A noble gas used in welding and light bulbs.",
+  "Potassium": "Symbol: K | Atomic Number: 19 | An essential mineral for the human body. Used in fertilizers.",
+  "Calcium": "Symbol: Ca | Atomic Number: 20 | Essential for bones and teeth. Used in cement and supplements.",
+  "Scandium": "Symbol: Sc | Atomic Number: 21 | A rare metal used in aerospace alloys and sports equipment.",
+  "Titanium": "Symbol: Ti | Atomic Number: 22 | A strong, lightweight metal. Used in aerospace and implants.",
+  "Vanadium": "Symbol: V | Atomic Number: 23 | A hard metal used in steel alloys and batteries.",
+  "Chromium": "Symbol: Cr | Atomic Number: 24 | A shiny metal used in stainless steel and chrome plating.",
+  "Manganese": "Symbol: Mn | Atomic Number: 25 | Used in steel production and batteries.",
+  "Iron": "Symbol: Fe | Atomic Number: 26 | The most used metal in the world. Essential for blood (hemoglobin).",
+  "Cobalt": "Symbol: Co | Atomic Number: 27 | Used in lithium-ion batteries and blue pigments.",
+  "Nickel": "Symbol: Ni | Atomic Number: 28 | A corrosion-resistant metal used in stainless steel and batteries.",
+  "Copper": "Symbol: Cu | Atomic Number: 29 | An excellent conductor of electricity. Used in wiring and plumbing.",
+  "Zinc": "Symbol: Zn | Atomic Number: 30 | Used in galvanizing steel and as a dietary supplement.",
+  "Gallium": "Symbol: Ga | Atomic Number: 31 | A metal that melts in your hand. Used in LEDs and semiconductors.",
+  "Germanium": "Symbol: Ge | Atomic Number: 32 | A metalloid used in fiber optics and early transistors.",
+  "Arsenic": "Symbol: As | Atomic Number: 33 | A toxic metalloid used in semiconductors and wood preservation.",
+  "Selenium": "Symbol: Se | Atomic Number: 34 | Used in solar cells and as a dietary antioxidant.",
+  "Bromine": "Symbol: Br | Atomic Number: 35 | A reddish-brown liquid halogen used in flame retardants.",
+  "Krypton": "Symbol: Kr | Atomic Number: 36 | A noble gas used in high-performance light bulbs and lasers.",
+  "Rubidium": "Symbol: Rb | Atomic Number: 37 | A soft, reactive metal used in atomic clocks.",
+  "Strontium": "Symbol: Sr | Atomic Number: 38 | Used in fireworks (red color) and bone research.",
+  "Yttrium": "Symbol: Y | Atomic Number: 39 | Used in LEDs, cancer treatment, and superconductors.",
+  "Zirconium": "Symbol: Zr | Atomic Number: 40 | Used in nuclear reactors and cubic zirconia gemstones.",
+  "Niobium": "Symbol: Nb | Atomic Number: 41 | Used in superconducting magnets and steel alloys.",
+  "Molybdenum": "Symbol: Mo | Atomic Number: 42 | Used in high-strength steel alloys and oil refining catalysts.",
+  "Technetium": "Symbol: Tc | Atomic Number: 43 | The first artificially produced element. Used in nuclear medicine.",
+  "Ruthenium": "Symbol: Ru | Atomic Number: 44 | A rare platinum-group metal used in electrical contacts.",
+  "Rhodium": "Symbol: Rh | Atomic Number: 45 | One of the rarest metals. Used in catalytic converters.",
+  "Palladium": "Symbol: Pd | Atomic Number: 46 | Used in catalytic converters and hydrogen purification.",
+  "Silver": "Symbol: Ag | Atomic Number: 47 | The best electrical conductor. Used in jewelry and electronics.",
+  "Cadmium": "Symbol: Cd | Atomic Number: 48 | Used in rechargeable batteries. Toxic to humans.",
+  "Indium": "Symbol: In | Atomic Number: 49 | Used in touchscreens and LCD displays.",
+  "Tin": "Symbol: Sn | Atomic Number: 50 | Used in food cans, solder, and bronze alloys.",
+  "Antimony": "Symbol: Sb | Atomic Number: 51 | Used in flame retardants and lead-acid batteries.",
+  "Tellurium": "Symbol: Te | Atomic Number: 52 | Used in solar panels and thermoelectric devices.",
+  "Iodine": "Symbol: I | Atomic Number: 53 | Essential for thyroid function. Used in antiseptics.",
+  "Xenon": "Symbol: Xe | Atomic Number: 54 | A noble gas used in flash lamps and ion propulsion engines.",
+  "Cesium": "Symbol: Cs | Atomic Number: 55 | Used in atomic clocks and oil drilling.",
+  "Barium": "Symbol: Ba | Atomic Number: 56 | Used in X-ray imaging and fireworks (green color).",
+  "Lanthanum": "Symbol: La | Atomic Number: 57 | A rare earth metal used in camera lenses and hybrid car batteries.",
+  "Cerium": "Symbol: Ce | Atomic Number: 58 | The most abundant rare earth metal. Used in catalytic converters.",
+  "Praseodymium": "Symbol: Pr | Atomic Number: 59 | Used in strong permanent magnets and aircraft engines.",
+  "Neodymium": "Symbol: Nd | Atomic Number: 60 | Used in the strongest permanent magnets in headphones and EVs.",
+  "Promethium": "Symbol: Pm | Atomic Number: 61 | A radioactive rare earth metal used in nuclear batteries.",
+  "Samarium": "Symbol: Sm | Atomic Number: 62 | Used in samarium-cobalt magnets and cancer treatment.",
+  "Europium": "Symbol: Eu | Atomic Number: 63 | Used in red and blue phosphors in TV screens.",
+  "Gadolinium": "Symbol: Gd | Atomic Number: 64 | Used as MRI contrast agent and in nuclear reactor control rods.",
+  "Terbium": "Symbol: Tb | Atomic Number: 65 | Used in green phosphors for displays.",
+  "Dysprosium": "Symbol: Dy | Atomic Number: 66 | Used in neodymium magnets for high-temperature performance.",
+  "Holmium": "Symbol: Ho | Atomic Number: 67 | Has the strongest magnetic moment of any element. Used in lasers.",
+  "Erbium": "Symbol: Er | Atomic Number: 68 | Used in fiber optic amplifiers and pink colorant in glass.",
+  "Thulium": "Symbol: Tm | Atomic Number: 69 | The rarest stable rare earth element. Used in portable X-ray devices.",
+  "Ytterbium": "Symbol: Yb | Atomic Number: 70 | Used in atomic clocks and lasers.",
+  "Lutetium": "Symbol: Lu | Atomic Number: 71 | The heaviest rare earth metal. Used in PET scan detectors.",
+  "Hafnium": "Symbol: Hf | Atomic Number: 72 | Used in nuclear reactor control rods and semiconductors.",
+  "Tantalum": "Symbol: Ta | Atomic Number: 73 | Used in capacitors for smartphones and surgical implants.",
+  "Tungsten": "Symbol: W | Atomic Number: 74 | The highest melting point of all metals. Used in light bulb filaments.",
+  "Rhenium": "Symbol: Re | Atomic Number: 75 | One of the rarest elements. Used in jet engine turbine blades.",
+  "Osmium": "Symbol: Os | Atomic Number: 76 | The densest naturally occurring element. Used in fountain pen tips.",
+  "Iridium": "Symbol: Ir | Atomic Number: 77 | The most corrosion-resistant metal. Used in spark plugs.",
+  "Platinum": "Symbol: Pt | Atomic Number: 78 | A precious metal used in catalytic converters and jewelry.",
+  "Gold": "Symbol: Au | Atomic Number: 79 | A precious yellow metal used in jewelry and electronics.",
+  "Mercury": "Symbol: Hg | Atomic Number: 80 | The only metal liquid at room temperature. Used in thermometers.",
+  "Thallium": "Symbol: Tl | Atomic Number: 81 | A toxic metal used in electronics and glass.",
+  "Lead": "Symbol: Pb | Atomic Number: 82 | A dense, toxic metal. Used in batteries and radiation shielding.",
+  "Bismuth": "Symbol: Bi | Atomic Number: 83 | A brittle metal used in cosmetics and low-melting alloys.",
+  "Polonium": "Symbol: Po | Atomic Number: 84 | A highly radioactive element used in antistatic devices.",
+  "Astatine": "Symbol: At | Atomic Number: 85 | The rarest naturally occurring element. Used in cancer research.",
+  "Radon": "Symbol: Rn | Atomic Number: 86 | A radioactive noble gas. A health hazard in buildings.",
+  "Francium": "Symbol: Fr | Atomic Number: 87 | The second rarest natural element. Highly radioactive.",
+  "Radium": "Symbol: Ra | Atomic Number: 88 | A radioactive metal discovered by Marie Curie.",
+  "Actinium": "Symbol: Ac | Atomic Number: 89 | A radioactive metal used in cancer treatment research.",
+  "Thorium": "Symbol: Th | Atomic Number: 90 | A radioactive metal considered a safer nuclear fuel alternative.",
+  "Protactinium": "Symbol: Pa | Atomic Number: 91 | A rare, toxic radioactive metal with few practical applications.",
+  "Uranium": "Symbol: U | Atomic Number: 92 | A radioactive metal used as fuel in nuclear power plants.",
+  "Neptunium": "Symbol: Np | Atomic Number: 93 | The first synthetic transuranium element. Used in neutron detection.",
+  "Plutonium": "Symbol: Pu | Atomic Number: 94 | A radioactive metal used in nuclear weapons and reactors.",
+  "Americium": "Symbol: Am | Atomic Number: 95 | A synthetic radioactive element used in smoke detectors.",
+  "Curium": "Symbol: Cm | Atomic Number: 96 | Named after Marie and Pierre Curie. Used in Mars rover instruments.",
+  "Berkelium": "Symbol: Bk | Atomic Number: 97 | A synthetic radioactive element named after Berkeley, California.",
+  "Californium": "Symbol: Cf | Atomic Number: 98 | Used in nuclear reactor startup and cancer treatment.",
+  "Einsteinium": "Symbol: Es | Atomic Number: 99 | Named after Albert Einstein. A synthetic radioactive element.",
+  "Fermium": "Symbol: Fm | Atomic Number: 100 | Named after Enrico Fermi. A synthetic radioactive element.",
+  "Mendelevium": "Symbol: Md | Atomic Number: 101 | Named after Dmitri Mendeleev, creator of the periodic table.",
+  "Nobelium": "Symbol: No | Atomic Number: 102 | Named after Alfred Nobel. A synthetic radioactive element.",
+  "Lawrencium": "Symbol: Lr | Atomic Number: 103 | Named after Ernest Lawrence. The last actinide element.",
+  "Rutherfordium": "Symbol: Rf | Atomic Number: 104 | Named after Ernest Rutherford. A synthetic transactinide element.",
+  "Dubnium": "Symbol: Db | Atomic Number: 105 | Named after Dubna, Russia. A synthetic highly radioactive element.",
+  "Seaborgium": "Symbol: Sg | Atomic Number: 106 | Named after Glenn Seaborg. A synthetic radioactive element.",
+  "Bohrium": "Symbol: Bh | Atomic Number: 107 | Named after Niels Bohr. A synthetic radioactive element.",
+  "Hassium": "Symbol: Hs | Atomic Number: 108 | Named after Hesse, Germany. A synthetic radioactive element.",
+  "Meitnerium": "Symbol: Mt | Atomic Number: 109 | Named after Lise Meitner. A synthetic radioactive element.",
+  "Darmstadtium": "Symbol: Ds | Atomic Number: 110 | Named after Darmstadt, Germany. A synthetic radioactive element.",
+  "Roentgenium": "Symbol: Rg | Atomic Number: 111 | Named after Wilhelm Röntgen, discoverer of X-rays.",
+  "Copernicium": "Symbol: Cn | Atomic Number: 112 | Named after Nicolaus Copernicus. A synthetic radioactive element.",
+  "Nihonium": "Symbol: Nh | Atomic Number: 113 | Named after Japan (Nihon). First element discovered in Asia.",
+  "Flerovium": "Symbol: Fl | Atomic Number: 114 | Named after Flerov Laboratory in Russia.",
+  "Moscovium": "Symbol: Mc | Atomic Number: 115 | Named after Moscow. A synthetic radioactive element.",
+  "Livermorium": "Symbol: Lv | Atomic Number: 116 | Named after Livermore, California.",
+  "Tennessine": "Symbol: Ts | Atomic Number: 117 | Named after Tennessee. A synthetic radioactive halogen.",
+  "Oganesson": "Symbol: Og | Atomic Number: 118 | Named after Yuri Oganessian. The heaviest known element.",
+  "Cell": "The cell is the basic structural and functional unit of all forms of life. The term comes from the Latin word cellula meaning 'small room'. A biological cell consists of a semipermeable cell membrane enclosing cytoplasm that contains genetic material. Most cells are only visible under a microscope. Cells emerged on Earth about 4 billion years ago.",
+  "DNA": "Deoxyribonucleic acid (DNA) is a polymer composed of two polynucleotide chains that coil around each other to form a double helix. The polymer carries genetic instructions for the development, functioning, growth and reproduction of all known organisms and many viruses. DNA and ribonucleic acid (RNA) are nucleic acids, one of the four major types of macromolecules essential for all known forms of life.",
+  "brain": "The brain is an organ that serves as the center of the nervous system in all vertebrate and most invertebrate animals. It consists of nervous tissue and is typically located in the head, usually near organs for special senses such as vision, hearing, and olfaction. It is responsible for receiving sensory information, processing that information (thought, cognition, intelligence) and the coordination of motor control.",
+  "Skeleton": "A skeleton is the structural frame that supports the body of most animals. There are several types: the exoskeleton (rigid outer shell), the endoskeleton (rigid internal frame), and the hydroskeleton (flexible internal structure supported by fluid pressure).",
+  "heart": "The heart is a muscular organ found in humans and other animals that pumps blood through the blood vessels. The heart and blood vessels together make up the circulatory system. The pumped blood carries oxygen and nutrients to tissue, while carrying metabolic waste such as carbon dioxide to the lungs.",
+  "stomach": "The stomach is a muscular, hollow organ in the upper gastrointestinal tract. It functions as a vital organ in the digestive system, involved in the gastric phase of digestion. In the stomach, chemical breakdown of food takes place by means of secreted digestive enzymes and gastric acid. It is located between the esophagus and the small intestine.",
+  "lung": "The lungs are the primary organs of the respiratory system. Their function is to extract oxygen from the atmosphere and transfer it into the bloodstream, and to release carbon dioxide from the bloodstream into the atmosphere. Humans have two lungs, a right and a left. Together they contain approximately 2,400 kilometers of airways and 300–500 million alveoli.",
+  "Eye": "An eye is a sensory organ that allows an organism to perceive visual information. It detects light and converts it into electro-chemical impulses in neurons. In higher organisms, the eye collects light, regulates its intensity through a diaphragm, focuses it through lenses to form an image, and transmits signals to the brain through the optic nerve.",
+  "arm": "In human anatomy, the arm refers to the upper limb. Academically the term specifically means the upper arm between the shoulder joint and the elbow joint. The distal part between the elbow and wrist is the forearm, and the extremity beyond the wrist is the hand.",
+  "leg": "A leg is a weight-bearing and locomotive anatomical structure, usually having a columnar shape. During locomotion, legs function as extensible struts. Most animals have an even number of legs. As an anatomical structure, it is used for locomotion, with the distal end often modified to distribute force.",
+  "teeth": "A tooth (pl.: teeth) is a hard, calcified structure found in the jaws of many vertebrates used to break down food. Some animals also use teeth to capture prey, for defensive purposes, or to carry young. Teeth are not made of bone, but rather of multiple tissues of varying density and hardness.",
+  "pancreas": "The pancreas is an organ of the digestive system and endocrine system of vertebrates. It is a mixed gland with both endocrine and exocrine functions. As an endocrine gland it regulates blood sugar levels, secreting insulin, glucagon, and other hormones. As an exocrine gland it secretes digestive enzymes into the duodenum.",
+  "Liver": "The liver is a major metabolic organ found exclusively in vertebrates. It performs many essential biological functions such as detoxification, synthesis of proteins, and production of biochemicals necessary for digestion. In humans it is located in the right upper quadrant of the abdomen. Its roles include carbohydrate metabolism, hormone production, and decomposition of red blood cells.",
+  "kidney": "The kidneys are two reddish-brown bean-shaped blood-filtering organs located on the left and right in the retroperitoneal space. In adult humans they are about 12 centimetres in length. They receive blood from the paired renal arteries. Each kidney is attached to a ureter, a tube that carries excreted urine to the bladder.",
+  "bladder": "The bladder is a hollow organ in humans and other vertebrates that stores urine from the kidneys. In placental mammals, urine enters the bladder via the ureters and exits via the urethra during urination. The typical adult human bladder will hold between 300 and 500 ml before the urge to empty occurs.",
+  "mucle": "Muscle is a specialised soft tissue, one of the four basic types of animal tissues. There are three types in vertebrates: skeletal, cardiac, and smooth muscle tissue. Muscle tissue contains special contractile proteins called actin and myosin which interact to cause movement.",
+  "skin": "Skin is the layer of usually soft, flexible outer tissue covering the body of a vertebrate animal, with three main functions: protection, regulation, and sensation.",
+  "animal": "Animals are multicellular, eukaryotic organisms belonging to the biological kingdom Animalia. With few exceptions, animals consume organic material, breathe oxygen, and are able to move. Over 1.5 million living animal species have been described, of which around 1.05 million are insects and around 65,000 are vertebrates.",
+  "human": "Humans (Homo sapiens) are the most abundant and widespread species of primates, characterized by bipedality, hairlessness, and large, complex brains. Humans are highly social beings and tend to live in complex social structures. Social interactions have established a wide variety of values, social norms, and rituals.",
+  "plant": "Plants are the eukaryotic organisms that constitute the kingdom Plantae. They are predominantly photosynthetic, using the green pigment chlorophyll to produce sugars from carbon dioxide and water. Most plants are multicellular, except for some green algae."
+};
+
+function getCategory(key) {
+  if (FRUITS.has(key)) return 'fruit';
+  if (LANG_KEYS.has(key)) return 'lang';
+  if (ELEMENTS.has(key)) return 'element';
+  if (BIO_KEYS.has(key)) return 'bio';
+  return 'veg';
+}
+
+function getCategoryIcon(key) {
+  if (FRUITS.has(key)) return '🍎';
+  if (LANG_KEYS.has(key)) return '💻';
+  if (ELEMENTS.has(key)) return '⚗️';
+  if (BIO_KEYS.has(key)) return '🧬';
+  return '🥦';
+}
+
+function getCategoryLabel(key) {
+  if (FRUITS.has(key)) return 'Fruit';
+  if (LANG_KEYS.has(key)) return 'Language';
+  if (ELEMENTS.has(key)) return 'Element';
+  if (BIO_KEYS.has(key)) return 'Biology';
+  return 'Vegetable';
+}
+
+function isPrime(n) {
+  if (n < 2) return false;
+  for (let i = 2; i <= Math.sqrt(n); i++) {
+    if (n % i === 0) return false;
+  }
+  return true;
+}
+
+function factorial(n) {
+  if (n > 20) return 'Too large to display';
+  let result = BigInt(1);
+  for (let i = 2; i <= n; i++) result *= BigInt(i);
+  return result.toString();
+}
+
+const searchInput = document.getElementById('searchInput');
+const resultsList = document.getElementById('resultsList');
+const infoBody = document.getElementById('infoBody');
+const infoHeader = document.getElementById('infoHeader');
+const infoIcon = document.getElementById('infoIcon');
+const infoTitle = document.getElementById('infoTitle');
+const stats = document.getElementById('stats');
+
+let currentResults = [];
+let activeIndex = -1;
+
+function renderResults(term) {
+  resultsList.innerHTML = '';
+  currentResults = [];
+  activeIndex = -1;
+
+  if (!term.trim()) {
+    stats.textContent = 'Type to search across all categories';
+    resultsList.innerHTML = '<li style="padding:0;border:0"><div class="empty-state"><div class="big">🔎</div><div>Start typing to search</div></div></li>';
+    return;
+  }
+
+  const lower = term.toLowerCase();
+
+  // Number match
+  const num = parseInt(term, 10);
+  if (!isNaN(num) && String(num) === term.trim()) {
+    currentResults.push({ type: 'number', key: String(num) });
+  }
+
+  // Data match
+  for (const key of Object.keys(data)) {
+    if (key.toLowerCase().includes(lower)) {
+      currentResults.push({ type: 'data', key });
+    }
+  }
+
+  if (currentResults.length === 0) {
+    stats.textContent = 'No results found';
+    resultsList.innerHTML = '<li style="padding:0;border:0"><div class="empty-state"><div class="big">😶</div><div>No results for "' + term + '"</div></div></li>';
+    return;
+  }
+
+  stats.textContent = `${currentResults.length} result${currentResults.length !== 1 ? 's' : ''} found`;
+
+  currentResults.forEach((item, i) => {
+    const li = document.createElement('li');
+    if (item.type === 'number') {
+      li.innerHTML = `<span class="item-icon">🔢</span>${item.key}`;
+    } else {
+      const icon = getCategoryIcon(item.key);
+      li.innerHTML = `<span class="item-icon">${icon}</span>${item.key}`;
+    }
+    li.addEventListener('click', () => selectItem(i));
+    resultsList.appendChild(li);
+  });
+}
+
+function selectItem(index) {
+  activeIndex = index;
+  const items = resultsList.querySelectorAll('li');
+  items.forEach((li, i) => li.classList.toggle('active', i === index));
+
+  const item = currentResults[index];
+  if (!item) return;
+
+  if (item.type === 'number') {
+    const n = parseInt(item.key, 10);
+    const even = n % 2 === 0 ? 'Even' : 'Odd';
+    const prime = isPrime(n) ? 'Prime ✅' : 'Not Prime ❌';
+    const sq = n * n;
+    const sqrt = Math.sqrt(n).toFixed(4);
+    const fact = factorial(n);
+
+    infoHeader.style.display = 'flex';
+    infoIcon.textContent = '🔢';
+    infoTitle.textContent = `Number: ${n}`;
+
+    infoBody.innerHTML = `
+      <span class="tag tag-number">Number</span>
+      <div class="num-grid">
+        <div class="num-card"><div class="label">Even / Odd</div><div class="value">${even}</div></div>
+        <div class="num-card"><div class="label">Prime</div><div class="value">${prime}</div></div>
+        <div class="num-card"><div class="label">Square</div><div class="value">${sq}</div></div>
+        <div class="num-card"><div class="label">Square Root</div><div class="value">${sqrt}</div></div>
+        <div class="num-card" style="grid-column:1/-1"><div class="label">Factorial</div><div class="value" style="font-size:0.75rem">${fact}</div></div>
+      </div>
+    `;
+  } else {
+    const key = item.key;
+    const info = data[key] || 'No information available.';
+    const cat = getCategory(key);
+    const icon = getCategoryIcon(key);
+    const label = getCategoryLabel(key);
+
+    infoHeader.style.display = 'flex';
+    infoIcon.textContent = icon;
+    infoTitle.textContent = key;
+
+    infoBody.innerHTML = `<span class="tag tag-${cat}">${label}</span><br>${info}`;
+  }
+}
+
+searchInput.addEventListener('input', () => {
+  renderResults(searchInput.value);
+  // auto-select first result
+  if (currentResults.length > 0) selectItem(0);
+});
+
+searchInput.focus();
+</script>
+</body>
+</html>
